@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	//"bytes"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -277,7 +277,8 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	f, _ := asset.Open()
 	defer f.Close()
 
-	//buf := bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
+	io.Copy(buf, f)
 	//var f_image *os.File
 	path := "/tmp/images/"
 	f_image, err := os.OpenFile(path+assetKey(slot, id), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
@@ -286,8 +287,12 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	}
 	defer f_image.Close()
 
-	io.Copy(f_image, f)
-	//io.Copy(buf, f)
+	err = syscall.Flock(int(f_image.Fd()), syscall.LOCK_EX)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(f_image, "%s", string(buf.Bytes()))
+	//io.Copy(f_image, f)
 	//asset_data := string(buf.Bytes())
 
 	//rd.Set(assetKey(slot, id), asset_data, 0)
