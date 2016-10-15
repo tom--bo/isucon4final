@@ -4,6 +4,7 @@ import (
 	//	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/go-martini/martini"
 	"io"
 	"log"
 	"net/http"
@@ -12,9 +13,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	//	"syscall"
-
-	"github.com/go-martini/martini"
+	"sync"
+	"syscall"
+	"time"
 	//"github.com/go-redis/redis"
 	"github.com/martini-contrib/render"
 	redis "gopkg.in/redis.v5"
@@ -214,7 +215,25 @@ func getLog(id string) map[string][]ClickLog {
 	return result
 }
 
+func postWebdav(ipaddr string, buf io.Reader) {
+	req, err := http.NewRequest("POST", ipaddr+"/images", buf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{Timeout: time.Duration(10) * time.Second}
+	resp, err2 := client.Do(req)
+	if err2 != nil {
+		fmt.Println(err2)
+		return
+	}
+
+	defer resp.Body.Close()
+}
+
 func routePostAd(r render.Render, req *http.Request, params martini.Params) {
+
 	slot := params["slot"]
 
 	advrId := advertiserId(req)
@@ -260,11 +279,44 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 
 	f, _ := asset.Open()
 	defer f.Close()
+
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, f)
-	asset_data := string(buf.Bytes())
+	//var f_image *os.File
+	path := "/tmp/images/"
+	f_image, err := os.OpenFile(path+assetKey(slot, id), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer f_image.Close()
 
-	rd.Set(assetKey(slot, id), asset_data, 0)
+	err = syscall.Flock(int(f_image.Fd()), syscall.LOCK_EX)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(f_image, "%s", string(buf.Bytes()))
+
+	// webdavへのpost
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		postWebdav(os.Getenv("remote1"), buf)
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		postWebdav(os.Getenv("remote2"), buf)
+		wg.Done()
+	}()
+	// 両方が終わるのを待つ
+	wg.Wait()
+
+	//io.Copy(f_image, f)
+	//asset_data := string(buf.Bytes())
+
+	//rd.Set(assetKey(slot, id), asset_data, 0)
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
 
