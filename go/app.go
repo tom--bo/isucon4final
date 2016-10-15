@@ -285,9 +285,8 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	defer f.Close()
 
 	buf := bytes.NewBuffer(nil)
-	buf2 := bytes.NewBuffer(nil)
 	io.Copy(buf, f)
-	io.Copy(buf2, f)
+	data := buf.Bytes()
 	//var f_image *os.File
 	filename := assetKey(slot, id) + "." + strings.Split(content_type, "/")[1]
 	path := "/tmp/images/" + filename
@@ -308,16 +307,16 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	go func(filename string, buf io.Reader, content_type string) {
-		postWebdav(os.Getenv("remote1")+"/images/"+filename, buf, content_type)
+	go func(filename string, data []byte, content_type string) {
+		postWebdav(os.Getenv("remote1")+"/images/"+filename, bytes.NewReader(data), content_type)
 		wg.Done()
-	}(filename, buf, content_type)
+	}(filename, data, content_type)
 
 	wg.Add(1)
-	go func(filename string, buf io.Reader, content_type string) {
-		postWebdav(os.Getenv("remote2")+"/images/"+filename, buf, content_type)
+	go func(filename string, data []byte, content_type string) {
+		postWebdav(os.Getenv("remote2")+"/images/"+filename, bytes.NewReader(data), content_type)
 		wg.Done()
-	}(filename, buf2, content_type)
+	}(filename, data, content_type)
 	// 両方が終わるのを待つ
 	wg.Wait()
 
