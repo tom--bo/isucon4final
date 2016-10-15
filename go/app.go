@@ -286,11 +286,26 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 
 	f, _ := asset.Open()
 	defer f.Close()
+
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, f)
-	asset_data := string(buf.Bytes())
+	//var f_image *os.File
+	path := "/tmp/images/"
+	f_image, err := os.OpenFile(path+assetKey(slot, id), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer f_image.Close()
 
-	rd.Set(assetKey(slot, id), asset_data, 0)
+	err = syscall.Flock(int(f_image.Fd()), syscall.LOCK_EX)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(f_image, "%s", string(buf.Bytes()))
+	//io.Copy(f_image, f)
+	//asset_data := string(buf.Bytes())
+
+	//rd.Set(assetKey(slot, id), asset_data, 0)
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
 
