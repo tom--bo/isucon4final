@@ -302,13 +302,13 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 
 	wg.Add(1)
 	go func() {
-		postWebdav(os.Getenv("remote1")+"/images/"+filename
+		postWebdav(os.Getenv("remote1")+"/images/"+filename, buf)
 		wg.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
-		postWebdav(os.Getenv("remote2")+"/images/"+filename
+		postWebdav(os.Getenv("remote2")+"/images/"+filename, buf)
 		wg.Done()
 	}()
 	// 両方が終わるのを待つ
