@@ -283,8 +283,8 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, f)
 	//var f_image *os.File
-	path := "/tmp/images/" + assetKey(slot, id) + "." + strings.Sprit(content_type, '/')[1]
-	f_image, err := os.OpenFile(path, id), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	path := "/tmp/images/" + assetKey(slot, id) + "." + strings.Split(content_type, "/")[1]
+	f_image, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		panic(err)
 	}
