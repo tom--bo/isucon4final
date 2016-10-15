@@ -12,8 +12,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	//	"syscall"
-
 	"github.com/go-martini/martini"
 	//"github.com/go-redis/redis"
 	"github.com/martini-contrib/render"
@@ -214,7 +214,33 @@ func getLog(id string) map[string][]ClickLog {
 	return result
 }
 
+func postWebdav() {
+	// postする処理
+}
+
 func routePostAd(r render.Render, req *http.Request, params martini.Params) {
+	// ----
+	var wg sync.WaitGroup
+
+	// 1つめのpost
+	wg.Add(1)
+	go func() {
+		postWebdav()
+		wg.Done()
+	}()
+
+	// 2つめのpost
+	wg.Add(1)
+	go func() {
+		postWebdav()
+		wg.Done()
+	}()
+
+	// 両方が終わるのを待つ
+	wg.Wait()
+
+	// ----
+
 	slot := params["slot"]
 
 	advrId := advertiserId(req)
