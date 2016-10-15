@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	//	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
+	//	"syscall"
 
 	"github.com/go-martini/martini"
 	//"github.com/go-redis/redis"
@@ -191,26 +191,10 @@ func getLogPath(advrId string) string {
 }
 
 func getLog(id string) map[string][]ClickLog {
-	path := getLogPath(id)
+	all, _ := rd.LRange("isu4:log:"+id, 0, -1).Result()
 	result := map[string][]ClickLog{}
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return result
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	err = syscall.Flock(int(f.Fd()), syscall.LOCK_SH)
-	if err != nil {
-		panic(err)
-	}
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
+	for _, v := range all {
+		line := v
 		line = strings.TrimRight(line, "\n")
 		sp := strings.Split(line, "\t")
 		ad_id := sp[0]
@@ -407,22 +391,7 @@ func routeGetAdRedirect(req *http.Request, r render.Render, params martini.Param
 	}
 	ua := req.Header.Get("User-Agent")
 
-	path := getLogPath(ad.Advertiser)
-
-	var f *os.File
-	f, err = os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-	if err != nil {
-		panic(err)
-	}
-
-	err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Fprintf(f, "%s\t%s\t%s\n", ad.Id, isuad, ua)
-	f.Close()
-
+	rd.RPush("isu4:log:"+ad.Advertiser, fmt.Sprintf("%s\t%s\t%s\n", ad.Id, isuad, ua))
 	r.Redirect(ad.Destination)
 }
 
