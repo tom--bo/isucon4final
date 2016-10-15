@@ -4,6 +4,7 @@ import (
 	//	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/go-martini/martini"
 	"io"
 	"log"
 	"net/http"
@@ -13,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	//	"syscall"
-	"github.com/go-martini/martini"
+	"syscall"
+	"time"
 	//"github.com/go-redis/redis"
 	"github.com/martini-contrib/render"
 	redis "gopkg.in/redis.v5"
@@ -221,6 +222,7 @@ func postWebdav(ipaddr string, buf io.Reader) {
 		return
 	}
 	// req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{Timeout: time.Duration(10) * time.Second}
 	resp, err2 := client.Do(req)
 	if err2 != nil {
 		fmt.Println(err2)
