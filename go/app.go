@@ -214,32 +214,23 @@ func getLog(id string) map[string][]ClickLog {
 	return result
 }
 
-func postWebdav() {
-	// postする処理
+func postWebdav(ipaddr string, buf io.Reader) {
+	req, err := http.NewRequest("POST", ipaddr+"/images", buf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	resp, err2 := client.Do(req)
+	if err2 != nil {
+		fmt.Println(err2)
+		return
+	}
+
+	defer resp.Body.Close()
 }
 
 func routePostAd(r render.Render, req *http.Request, params martini.Params) {
-	// ----
-	var wg sync.WaitGroup
-
-	// 1つめのpost
-	wg.Add(1)
-	go func() {
-		postWebdav()
-		wg.Done()
-	}()
-
-	// 2つめのpost
-	wg.Add(1)
-	go func() {
-		postWebdav()
-		wg.Done()
-	}()
-
-	// 両方が終わるのを待つ
-	wg.Wait()
-
-	// ----
 
 	slot := params["slot"]
 
@@ -302,6 +293,24 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 		panic(err)
 	}
 	fmt.Fprintf(f_image, "%s", string(buf.Bytes()))
+
+	// webdavへのpost
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		postWebdav(os.Getenv("remote1"), buf)
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		postWebdav(os.Getenv("remote2"), buf)
+		wg.Done()
+	}()
+	// 両方が終わるのを待つ
+	wg.Wait()
+
 	//io.Copy(f_image, f)
 	//asset_data := string(buf.Bytes())
 
