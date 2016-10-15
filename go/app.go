@@ -280,7 +280,7 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	io.Copy(buf, f)
 	asset_data := string(buf.Bytes())
 
-	rd.Set(assetKey(slot, id), asset_data)
+	rd.Set(assetKey(slot, id), asset_data, 0)
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
 
