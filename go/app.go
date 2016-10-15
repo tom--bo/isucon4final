@@ -217,7 +217,7 @@ func getLog(id string) map[string][]ClickLog {
 }
 
 func postWebdav(ipaddr string, buf io.Reader, content_type string) {
-	req, err := http.NewRequest("PUT", ipaddr, buf)
+	req, err := http.NewRequest("PUT", "http://"+ipaddr, buf)
 	if err != nil {
 		fmt.Println(err)
 		return
