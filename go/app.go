@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"regexp"
 	"strconv"
@@ -13,8 +15,9 @@ import (
 	"syscall"
 
 	"github.com/go-martini/martini"
-	"github.com/go-redis/redis"
+	//"github.com/go-redis/redis"
 	"github.com/martini-contrib/render"
+	redis "gopkg.in/redis.v5"
 )
 
 type Ad struct {
@@ -58,7 +61,7 @@ type BreakdownReport struct {
 var rd *redis.Client
 
 func init() {
-	rd = redis.NewTCPClient(&redis.Options{
+	rd = redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 		DB:   0,
 	})
@@ -138,7 +141,7 @@ func nextAd(req *http.Request, slot string) *AdWithEndpoints {
 
 func getAd(req *http.Request, slot string, id string) *AdWithEndpoints {
 	key := adKey(slot, id)
-	m, _ := rd.HGetAllMap(key).Result()
+	m, _ := rd.HGetAll(key).Result()
 
 	if m == nil {
 		return nil
@@ -261,15 +264,15 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 		destination = a[0]
 	}
 
-	rd.HMSet(key,
-		"slot", slot,
-		"id", id,
-		"title", title,
-		"type", content_type,
-		"advertiser", advrId,
-		"destination", destination,
-		"impressions", "0",
-	)
+	rd.HMSet(key, map[string]string{
+		"slot":        slot,
+		"id":          id,
+		"title":       title,
+		"type":        content_type,
+		"advertiser":  advrId,
+		"destination": destination,
+		"impressions": "0",
+	})
 
 	f, _ := asset.Open()
 	defer f.Close()
@@ -434,7 +437,7 @@ func routeGetReport(req *http.Request, r render.Render) {
 	report := map[string]*Report{}
 	adKeys, _ := rd.SMembers(advertiserKey(advrId)).Result()
 	for _, adKey := range adKeys {
-		ad, _ := rd.HGetAllMap(adKey).Result()
+		ad, _ := rd.HGetAll(adKey).Result()
 		if ad == nil {
 			continue
 		}
@@ -477,7 +480,7 @@ func routeGetFinalReport(req *http.Request, r render.Render) {
 	reports := map[string]*Report{}
 	adKeys, _ := rd.SMembers(advertiserKey(advrId)).Result()
 	for _, adKey := range adKeys {
-		ad, _ := rd.HGetAllMap(adKey).Result()
+		ad, _ := rd.HGetAll(adKey).Result()
 		if ad == nil {
 			continue
 		}
@@ -549,6 +552,10 @@ func main() {
 	m.Use(render.Renderer(render.Options{
 		Layout: "layout",
 	}))
+
+	go func() {
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
 
 	m.Group("/slots/:slot", func(r martini.Router) {
 		m.Post("/ads", routePostAd)
