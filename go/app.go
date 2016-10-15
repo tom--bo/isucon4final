@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-martini/martini"
 	"io"
+	// "io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -215,15 +216,18 @@ func getLog(id string) map[string][]ClickLog {
 	return result
 }
 
-func postWebdav(ipaddr string, buf io.Reader) {
+func postWebdav(ipaddr string, buf io.Reader, content_type string) {
 	req, err := http.NewRequest("PUT", ipaddr, buf)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	// req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Type", content_type)
 	client := &http.Client{Timeout: time.Duration(10) * time.Second}
 	resp, err2 := client.Do(req)
+	// out, _ := ioutil.ReadAll(req.Header)
+	//fmt.Println("resq bodyyyyyyyyyyyyyyyyyyyyy" + string(out))
+	fmt.Printf("resq bodyyyyyyyyyyyyyyyyyyy %v\n", req.Header)
 	if err2 != nil {
 		fmt.Println(err2)
 		return
@@ -281,7 +285,9 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	defer f.Close()
 
 	buf := bytes.NewBuffer(nil)
+	buf2 := bytes.NewBuffer(nil)
 	io.Copy(buf, f)
+	io.Copy(buf2, f)
 	//var f_image *os.File
 	filename := assetKey(slot, id) + "." + strings.Split(content_type, "/")[1]
 	path := "/tmp/images/" + filename
@@ -296,21 +302,22 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 		panic(err)
 	}
 	fmt.Fprintf(f_image, "%s", string(buf.Bytes()))
+	fmt.Println("ossssssssssssss" + os.Getenv("remote1"))
 
 	// webdavへのpost
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	go func() {
-		postWebdav(os.Getenv("remote1")+"/images/"+filename, buf)
+	go func(filename string, buf io.Reader, content_type string) {
+		postWebdav(os.Getenv("remote1")+"/images/"+filename, buf, content_type)
 		wg.Done()
-	}()
+	}(filename, buf, content_type)
 
 	wg.Add(1)
-	go func() {
-		postWebdav(os.Getenv("remote2")+"/images/"+filename, buf)
+	go func(filename string, buf io.Reader, content_type string) {
+		postWebdav(os.Getenv("remote2")+"/images/"+filename, buf, content_type)
 		wg.Done()
-	}()
+	}(filename, buf2, content_type)
 	// 両方が終わるのを待つ
 	wg.Wait()
 
