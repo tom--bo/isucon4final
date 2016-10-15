@@ -283,7 +283,8 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, f)
 	//var f_image *os.File
-	path := "/tmp/images/" + assetKey(slot, id) + "." + strings.Split(content_type, "/")[1]
+	filename := assetKey(slot, id) + "." + strings.Split(content_type, "/")[1]
+	path := "/tmp/images/" + filename
 	f_image, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		panic(err)
@@ -301,13 +302,13 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 
 	wg.Add(1)
 	go func() {
-		postWebdav(os.Getenv("remote1"), buf)
+		postWebdav(os.Getenv("remote1")+"/images/"+filename
 		wg.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
-		postWebdav(os.Getenv("remote2"), buf)
+		postWebdav(os.Getenv("remote2")+"/images/"+filename
 		wg.Done()
 	}()
 	// 両方が終わるのを待つ
